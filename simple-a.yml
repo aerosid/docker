@@ -1,0 +1,32 @@
+services:
+  # Run this before running simple-b.yml
+  nginx:
+    container_name: nginx
+    image: nginx:1.23.1
+    volumes:
+      - /home/tridentapp/docker/nginx/www:/usr/share/nginx/html:ro
+      - /home/tridentapp/docker/nginx/config/default.conf:/etc/nginx/nginx.conf:ro
+    network_mode: "host"
+  redis:
+    command: [ "--requirepass", "trident", "--cluster-enabled", "yes" ]
+    container_name: redis
+    depends_on:
+      - nginx
+    image: redis:7.0.4
+    network_mode: "host"
+  mysql:
+    # Refer https://stackoverflow.com/questions/70322031/does-docker-compose-support-init-container
+    container_name: mysql
+    depends_on:
+      - redis
+    image: mysql:8.0.30
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=sample
+      - MYSQL_USER=ubuntu
+      - MYSQL_PASSWORD=hello
+    network_mode: "host"
+    volumes:
+      - /home/tridentapp/docker/mysql/config/trident.sql:/tmp/trident.sql:ro
+      - /home/tridentapp/docker/mysql/config/db.sh:/tmp/db.sh
+    # Open console and run, /tmp/db.sh

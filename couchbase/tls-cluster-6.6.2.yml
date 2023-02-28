@@ -1,0 +1,53 @@
+# $HOME=/home/ubuntu or /home/tridentapp
+networks:
+  hdfc-uat:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.229.214.0/24
+          gateway: 10.229.214.1
+services:
+  cb-131:
+    container_name: cb-131
+    image: couchbase/server:enterprise-6.6.2
+    networks:
+      hdfc-uat:
+        ipv4_address: 10.229.214.131
+    ports:
+        - "8091:8091"
+        - "18091:18091"
+    volumes:
+      - $HOME/frm-cloud/docker/couchbase:/app:rw
+  cb-132:
+    container_name: cb-132
+    depends_on:
+      - cb-131
+    image: couchbase/server:enterprise-6.6.2
+    networks:
+      hdfc-uat:
+        ipv4_address: 10.229.214.132
+    volumes:
+      - $HOME/frm-cloud/docker/couchbase:/app:rw
+  cb-133:
+    container_name: cb-133
+    depends_on:
+      - cb-132
+    image: couchbase/server:enterprise-6.6.2
+    networks:
+      hdfc-uat:
+        ipv4_address: 10.229.214.133
+    volumes:
+      - $HOME/frm-cloud/docker/couchbase:/app:rw
+  init-tls-cluster-6.6.2:
+    # Refer https://stackoverflow.com/questions/70322031/does-docker-compose-support-init-container
+    container_name: init-tls-cluster-6.6.2
+    command:
+      - /bin/bash
+      - -c
+      - /app/init-tls-cluster-6.6.2.sh
+    depends_on:
+      - cb-133
+    image: init-container:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - $HOME/frm-cloud/docker/couchbase:/app:rw

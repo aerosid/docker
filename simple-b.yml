@@ -1,0 +1,13 @@
+services:
+  # Run this after simple-a.yml
+  hsm:
+    container_name: hsm
+    image: hsm:latest
+    network_mode: "host"
+    # Open console and run,  curl localhost:9083/healthcheck?pretty=true
+  trident:
+    container_name: trident
+    depends_on:
+      - hsm
+    image: trident:latest
+    network_mode: "host"

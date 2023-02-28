@@ -1,0 +1,8 @@
+# 
+networks:
+  hdfc-uat:
+    ipam:
+      driver: bridge
+      config:
+        - subnet: "10.229.214.0/24"
+        - gateway: "10.229.214.1"

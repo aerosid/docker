@@ -1,0 +1,36 @@
+# $HOME=/home/ubuntu or /home/tridentapp
+networks:
+  hdfc-uat:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.229.213.0/24
+          gateway: 10.229.213.1
+services:
+  rabbit-217:
+    container_name: rabbit-217
+    image: rabbitmq:cluster
+    networks:
+      hdfc-uat:
+        ipv4_address: 10.229.213.217
+    ports:
+        - "5671:5671"
+        - "5672:5672"
+        - "15672:15672"
+    volumes:
+      - $HOME/frm-cloud/docker/rabbitmq/config/rabbitmq-cluster.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - $HOME/frm-cloud/docker/rabbitmq/config/host.pem:/etc/rabbitmq/rabbitmq.crt:ro
+      - $HOME/frm-cloud/docker/rabbitmq/config/host.key:/etc/rabbitmq/rabbitmq.key:ro
+  rabbit-218:
+    container_name: rabbit-218
+    depends_on:
+      - rabbit-217
+    image: rabbitmq:cluster
+    networks:
+      hdfc-uat:
+        ipv4_address: 10.229.213.218
+    volumes:
+      - $HOME/frm-cloud/docker/rabbitmq/config/rabbitmq-cluster.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - $HOME/frm-cloud/docker/rabbitmq/config/host.pem:/etc/rabbitmq/rabbitmq.crt:ro
+      - $HOME/frm-cloud/docker/rabbitmq/config/host.key:/etc/rabbitmq/rabbitmq.key:ro
+

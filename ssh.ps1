@@ -1,0 +1,1 @@
+ssh -F ssh-config -i id_rsa $args[0]

@@ -1,0 +1,1 @@
+FROM ubuntu/redis:6.0-22.04_beta

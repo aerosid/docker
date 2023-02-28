@@ -1,0 +1,1 @@
+scp -F .\ssh-config -r . $args[0]

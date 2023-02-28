@@ -1,0 +1,4 @@
+FROM couchbase/server:enterprise-6.6.2
+ADD ./standalone /app/
+WORKDIR /app
+RUN ["chmod", "ugo+rwx", "*.sh"]

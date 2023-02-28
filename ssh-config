@@ -1,0 +1,5 @@
+Host aws-ubuntu
+    HostName a.b.c.d
+    User ubuntu
+    IdentityFile .\id_rsa
+    LocalForward 3306 127.0.0.1:3306
