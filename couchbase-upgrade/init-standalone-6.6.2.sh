@@ -2,7 +2,9 @@
 set -e
 set -x
 echo '/*** server start-up ***/'
+couchbase-server --start
 sleep 20s
+couchbase-server --status
 echo '/*** init cluster ***/'
 cd /tmp
 couchbase-cli cluster-init \

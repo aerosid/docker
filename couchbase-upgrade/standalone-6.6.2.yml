@@ -2,9 +2,13 @@
 services:
   couchbase:
     container_name: couchbase
+    command:
+      - tail
+      - -f
+      - /dev/null
     image: couchbase/server:enterprise-6.6.2
     volumes:
-      - $X/vscode/docker/couchbase:/app:ro
+      - $X/vscode/docker/couchbase-upgrade:/app:ro
     network_mode: host
   init-couchbase:
     # Refer https://stackoverflow.com/questions/70322031/does-docker-compose-support-init-container
