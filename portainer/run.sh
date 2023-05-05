@@ -3,9 +3,9 @@
 docker run \
   --detach \
   --name portainer \
-  --publish 9001:9000 \
+  --publish 9000:9000 \
   --rm \
-  --volume /var/run/docker.sock:/var/run/docker.sock \
-  --volume portainer-data:/data \
+  --volume /run/user/1000/docker.sock:/var/run/docker.sock \
+  --volume /home/ubuntu/vscode/docker/portainer/data:/data \
   portainer:latest
   

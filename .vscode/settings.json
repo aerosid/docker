@@ -1,0 +1,10 @@
+{
+    "emeraldwalk.runonsave": {
+        "autoClearConsole": true,
+        "commands": [
+            {
+                "cmd": "${workspaceFolder}/.copy-on-save.sh ${file} ${relativeFile}"
+            },
+        ]
+    }
+}

@@ -5,7 +5,8 @@ services:
     image: couchbase/server:enterprise-6.6.2
     volumes:
       - $X/vscode/docker/couchbase:/app:ro
-    network_mode: host
+    ports:
+      - "8091:8091"
   init-couchbase:
     # Refer https://stackoverflow.com/questions/70322031/does-docker-compose-support-init-container
     container_name: init-couchbase
@@ -18,7 +19,7 @@ services:
     image: init-container:latest
     network_mode: host
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /run/user/1000/docker.sock:/var/run/docker.sock
 
 
 

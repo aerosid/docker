@@ -33,6 +33,7 @@ See:
 - [On-the-Wire Security](https://docs.couchbase.com/server/current/manage/manage-security/manage-tls.html)
 - tls-cluster-7.1.1.yml
 ## 3. Docker
+### 3.1. Standard
 ```bash
 # install docker
 tee ~/batch.sh<<EOF
@@ -69,6 +70,22 @@ sudo systemctl restart docker
 sudo systemctl enable docker
 EOF
 ~/batch.sh
+```
+### 3.1. Rootless
+First, deploy standard.
+```bash
+sudo apt-get install -y uidmap
+apt list uidmap
+grep ^$(whoami): /etc/subuid
+grep ^$(whoami): /etc/subgid
+apt list dbus-user-session
+
+sudo systemctl disable --now docker.service docker.socket
+sudo reboot
+# log back in
+dockerd-rootless-setuptool.sh install
+systemctl --user enable docker
+sudo loginctl enable-linger $(whoami)
 ```
 ## 4. Envoy
 ```bash
@@ -373,7 +390,38 @@ curl  -v \
       --data-raw '{"streams": [{ "stream": { "logger": "shell" }, "values": [ [ "1662950083000000000", "This is a test" ] ] }]}'
 ```
 
-## 9. Nginx
+## 9. Minio
+- [Installing Minio](https://linuxhint.com/installing_minio_ubuntu/)
+- [Minio Server](https://min.io/docs/minio/linux/reference/minio-server/minio-server.html#)
+- [Minio Client](https://min.io/docs/minio/linux/reference/minio-mc.html)
+- [download_from_minio.sh](https://gist.github.com/JustinTimperio/ae695eef5fda1f1590a685a017bbb5ec#file-download_from_minio-sh-L50)
+```bash
+
+docker pull bitnami/minio:latest
+docker run \
+--detach \
+--env MINIO_ROOT_USER="minio-root-user" \
+--env MINIO_ROOT_PASSWORD="minio-root-password" \
+--name minio \
+--network host \
+--rm \
+--volume /home/ubuntu/vscode/docker/minio:/app:rw \
+bitnami/minio:latest
+docker exec -it minio /bin/bash
+cd /tmp
+mc alias set localhost http://127.0.0.1:9000 "minio-root-user" "minio-root-password"
+mc admin info localhost
+mc mb -p localhost/tmp
+echo "Hello World!" > message.txt
+mc cp ./message.txt localhost/tmp
+mc cat localhost/tmp/message.txt
+mc cp localhost/tmp/message.txt ./message.bak.txt
+cat ./message.bak.txt
+md5sum /tmp/message.txt /tmp/message.bak.txt | md5sum --check
+/app/download.sh
+```
+
+## 10. Nginx
 ```bash
 tee ~/batch.sh<<EOF
 #!/bin/bash
@@ -450,7 +498,7 @@ docker  run \\
         nginx:latest
 EOF
 ```
-## 10. OpenSSL
+## 11. OpenSSL
 ```bash
 cd /app/config
 
@@ -488,7 +536,7 @@ openssl x509 -subject -issuer -startdate -enddate -noout -in /app/config/acme.pe
 openssl rsa -modulus -noout -in /app/config/acme.key | openssl md5
 openssl x509 -modulus -noout -in /app/config/acme.pem | openssl md5 # match private key with cert; md5 sums must match
 ```
-## 11. Portainer
+## 13. Portainer
 See
 - [Portainer Deployment](https://docs.portainer.io/v/ce-2.9/start/install/server/docker/linux)
 
@@ -526,7 +574,7 @@ docker tag prom/prometheus:v2.38.0 prometheus:latest
 docker run --it --name prometheus --network=host --rm prometheus:latest
 ```
 Open `localhost:9090`.
-## 13. RabbitMQ
+## 14. RabbitMQ
 ```bash
 # Create rabbit-mq network
 docker network create \
@@ -567,7 +615,7 @@ docker run \
   -v ~/frm-cloud/docker/rabbitmq/config/host.key:/etc/rabbitmq/rabbitmq.key:ro \
   rabbitmq:cluster
 ```
-## 14. Redis
+## 15. Redis
 ```bash
 tee ~/batch.sh<<EOF
 #!/bin/bash
@@ -593,7 +641,7 @@ docker  run \
         redis:latest redis-cli -h 127.0.0.1
 ```
 
-## 15. SonarQube
+## 16. SonarQube
 See
 - [SonarQube Documentation](https://docs.sonarqube.org/latest/)
 - [Disable Rules](https://sqa.stackexchange.com/questions/24734/how-to-deactivate-a-rule-in-sonarqube)
@@ -647,7 +695,7 @@ C:\Users\sidharth.sankar\AppData\Local\gradle-5.4.1\bin\gradle.bat sonarqube `
   -Dsonar.login=squ_5ee74580b7c2631c7e0363a851bfccf839b546a8 `
   -Dsonar.login=sqp_3d262afd0b532120248e38f0de020c52b182db42
 ```
-## 16. Ubuntu
+## 17. Ubuntu
 ```bash
 tee ~/batch.sh<<EOF
 #!/bin/bash
