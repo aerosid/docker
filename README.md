@@ -71,7 +71,9 @@ sudo systemctl enable docker
 EOF
 ~/batch.sh
 ```
-### 3.1. Rootless
+### 3.2. Rootless
+- See [Rootless Docker](https://docs.docker.com/engine/security/rootless/)
+
 First, deploy standard.
 ```bash
 sudo apt-get install -y uidmap
@@ -87,6 +89,22 @@ dockerd-rootless-setuptool.sh install
 systemctl --user enable docker
 sudo loginctl enable-linger $(whoami)
 ```
+### 3.3. WSL 
+Start Docker
+```
+/mnt/c/Windows/System32/wsl.exe -d Ubuntu sh -c "nohup sudo -b dockerd >/home/ubuntu/dockerd.log 2>&1 </dev/null"
+# -d: WSL distro to run
+# nohup: keep running whether or not connection is lost or you logout
+# -b: attach containers to network bridge
+# >/home/ubuntu/dockerd.log: redirect stdout to dockerd.log
+# 2>&1: redirect stderr to stdout
+# </dev/null: don't expect input
+```
+Stop Docker
+```
+sudo kill -SIGTERM $(pidof dockerd)
+```
+
 ## 4. Envoy
 ```bash
 tee ~/batch.sh<<EOF
@@ -423,6 +441,11 @@ md5sum /tmp/message.txt /tmp/message.bak.txt | md5sum --check
 
 ## 10. Nginx
 ```bash
+cat <<EOT >> greetings.txt
+line 1
+line 2
+EOT
+
 tee ~/batch.sh<<EOF
 #!/bin/bash
 set -e
