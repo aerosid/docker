@@ -756,71 +756,72 @@ docker  run \
         --rm \
         -v ~:/home/ubuntu ubuntu echo 'Hello World!' $(date)
 ```
+
+## 18. UFW
+### 18.1. Installation
+```
+ufw status
+sudo apt install -y ufw
+sudo systemctl start ufw 
+sudo systemctl enable ufw
+sudo systemctl status ufw
+```
+### 18.2. SSH
+```
+ufw status # expect Status: inactive
+sudo ufw allow OpenSSH 
+sudo ufw allow ssh
+sudo ufw allow 22
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw show added
+
+sudo ufw enable
+ufw status
+```
+### 18.3. Web
+```
+sudo ufw allow http 
+sudo ufw allow https
+sudo ufw show added
+ufw status
+```
+### 18.4 Port Forwarding
+Refer: [UFW Port Forwarding](https://www.baeldung.com/linux/ufw-port-forward)
+
+#### 18.4.1. Update `sysctl.conf`
+```
+cat /etc/ufw/sysctl.conf
+echo 'net/ipv4/ip_forward=1' >> /etc/ufw/sysctl.conf
+```
+
+#### 18.4.2. Update `before.rules`
+sudo vi /etc/ufw/before.rules
+```
+*filter
+...
+...
+COMMIT
+
+//Add this to the bottom.
+*nat
+:PREROUTING ACCEPT [0:0]
+-A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+-A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8443
+COMMIT
+```
+
+#### 18.4.3. Update ufw rules
+```
+sudo ufw allow 8080/tcp
+sudo ufw allow 8443/tcp
+sudo systemctl restart ufw
+```
+
+#### 18.4.4. Reboot server
+Sometimes it takes a reboot for things to work.
+
 ## Note(s)
 ```bash
-couchbase-server --stop
-couchbase-server --status 
-# See https://docs.couchbase.com/server/current/install/upgrade-cluster-online-full-capacity.html
-cp -r /opt/couchbase/var/lib/couchbase/config /tmp/config-backup # backup config files
-apt autoremove -y --purge couchbase-server # uninstall on ubuntu
-yum autoremove couchbase-server # unistall on RHEL
-rm -rf /opt/couchbase && echo "success" || echo "failed"
-ls -l /opt/couchbase/var
-cd /tmp
-apt update 
-apt install -y curl lsb-release gnupg2
-curl -O https://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-amd64.deb # meta-package
-dpkg -i ./couchbase-release-1.0-amd64.deb
-apt-get update
-apt list -a couchbase-server
-apt-get install -y couchbase-server=7.1.1-3175-1
-couchbase-server --start
-couchbase-server --status
-mkdir -p /opt/couchbase/var/lib/couchbase/inbox/CA
-cp /tmp/ca.pem /opt/couchbase/var/lib/couchbase/inbox/CA
-cp /tmp/chain.pem /opt/couchbase/var/lib/couchbase/inbox/chain.pem
-cp /tmp/pkey.key /opt/couchbase/var/lib/couchbase/inbox/pkey.key
-chown -R couchbase:couchbase /opt/couchbase/var/lib/couchbase/inbox
-chmod +x /opt/couchbase/var/lib/couchbase/inbox
-chmod 0600 /opt/couchbase/var/lib/couchbase/inbox/*
-find /opt/couchbase/var/lib/couchbase/inbox -type f | xargs ls -l
-couchbase-cli ssl-manage -c localhost -u Administrator -p password --cluster-ca-load 
-couchbase-cli ssl-manage -c localhost -u Administrator -p password --set-node-certificate
-couchbase-cli cluster-init \
-                --cluster-username Administrator \
-                --cluster-password password \
-                --cluster-name Default \
-                --services data,index,query \
-                --cluster-ramsize 256 \
-                --cluster-index-ramsize 256 \
-                --index-storage-setting default
-couchbase-cli bucket-create \
-                --cluster localhost \
-                --username Administrator \
-                --password password \
-                --bucket default \
-                --bucket-type couchbase \
-                --bucket-ramsize 256
-cbimport    csv \
-            -c localhost \
-            -u Administrator \
-            -p password \
-            -b default \
-            -d file:///app/config/data.csv \
-            -g key::#MONO_INCR#
-cbq -u Administrator -p password -script 'create primary index `#primary` ON `default`;'
-cbq -u Administrator -p password -script '
-select min(d0.yyyymmdd) as earliest 
-    from ( 
-        select d1.yyyymmdd, d1.ip 
-        from `default` d1 
-        where d1.cardNo in ( 
-            select raw d2.cardNo 
-            from `default` d2 
-            where d2.clientId = "5") 
-    ) d0 
-    where d0.ip in ( 
-            select raw d3.ip 
-            from `default` d3 
-            where d3.clientId = "5");'
+
 ```
