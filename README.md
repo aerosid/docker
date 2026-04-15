@@ -3,7 +3,150 @@
 # batch.sh will hold a bunch of commands to run in one go.
 touch ~/batch.sh && chmod +x ~/batch.sh
 ```
-## 1. cAdvisor
+## 1. Asterisk
+Installation:
+```bash
+apt update 
+apt upgrade -y
+apt install -y tree vim wget build-essential # build-essential holds the C++ compiler
+which gcc
+which g++
+# Download Source
+cd /tmp
+wget https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-22-current.tar.gz
+tar -tvzf /tmp/asterisk-22-current.tar.gz
+tar -C /usr/local/src -xvzf /tmp/asterisk-22-current.tar.gz
+# Install Pre-reqs
+cd /usr/local/src/asterisk-22.8.2
+apt-get update
+cd ./contrib/scripts
+./install_prereq test # run apt-get update again if you need to
+./install_prereq install
+# Validate Pre-reqs
+cd /usr/local/src/asterisk-22.8.2
+make distclean
+./configure
+# Build
+make menuselect
+make #compile asterisk
+# Install
+make install #install asterisk
+make samples #/etc/asterisk/*.conf
+make config #/etc/init.d/asterisk
+make install-logrotate
+make basic-pbx
+make progdocs
+```
+Sample `pjsip.conf`:
+```ini
+[airtel-udp]
+type=transport
+protocol=udp
+bind=192.168.6.3
+local_net=192.168.6.0/24
+
+[wireguard-udp]
+type=transport
+protocol=udp
+bind=10.0.0.2
+
+[fxo]
+type=auth
+auth_type=userpass
+username=fxo
+password=hello
+
+[fxo]
+type=endpoint
+transport=airtel-udp
+context=wan
+disallow=all
+allow=ulaw
+auth=fxo ; inbound, i.e., fxo calls asterisk
+outbound_auth=fxo ; outbound, i.e., asterisk calls fxo
+aors=fxo
+force_rport=yes
+rtp_symmetric=yes
+direct_media=yes
+rewrite_contact=yes ; without this setting, audio does not work
+rtp_keepalive=1 ; without this setting, audio does not work
+
+[fxo]
+type=aor
+contact=sip:192.168.6.65:5062
+qualify_frequency=300
+max_contacts=1
+
+[fxo]
+type=identify
+endpoint=fxo
+match=192.168.6.65
+
+[aws-asterisk]
+type=endpoint
+transport=wireguard-udp
+context=wan
+disallow=all
+allow=ulaw
+aors=aws-asterisk
+force_rport=yes
+rtp_symmetric=yes
+direct_media=no ; when set to yes, strict RTP learning does not complete; but audio is available
+
+[aws-asterisk]
+type=aor
+contact=sip:10.0.0.1
+qualify_frequency=300
+max_contacts=1
+
+[aws-asterisk]
+type=identify
+endpoint=aws-asterisk
+match=10.0.0.1
+```
+Sample `extensions.conf`:
+```ini
+[wan]
+; Inbound call: customer calling application
+; When FXO calls airtel-asterisk, it auto-dials extension 2
+exten => 2,1,NoOp(Inbound call: customer calling application at +917795774476)
+exten => 2,n,Dial(PJSIP/+14808004695@aws-asterisk)
+exten => 2,n,Hangup()
+
+
+; Outbound call: application calling customer
+; aws-asterisk dialed +91XXXXXXXXXX
+exten => _+91.,1,NoOp(Outbound call: application calling customer at ${EXTEN})
+exten => _+91.,n,Dial(PJSIP/${EXTEN:3}@fxo)
+exten => _+91.,n,Hangup()
+```
+See: [Doc](https://docs.asterisk.org/)
+1. Basic Commands:
+```
+start, remote console: https://docs.asterisk.org/Operation/Running-Asterisk/
+stop: https://docs.asterisk.org/Operation/Running-Asterisk/Stopping-and-Restarting-Asterisk-From-The-CLI/
+reload config: core reload
+help: core show help
+```
+2. /etc/asterisk/pjsip.conf:
+```
+Configuration File Format: https://docs.asterisk.org/Configuration/Channel-Drivers/SIP/Configuring-res_pjsip/PJSIP-Configuration-Sections-and-Relationships/
+Configuration Options: https://docs.asterisk.org/Latest_API/API_Documentation/Module_Configuration/res_pjsip/
+```
+3. /etc/asterisk/extensions.conf:
+```
+Configuration File Format: https://docs.asterisk.org/Configuration/Dialplan/Contexts-Extensions-and-Priorities/
+Useful Applications: https://docs.asterisk.org/Configuration/Applications/Answer-Playback-and-Hangup-Applications/
+Useful Applications: https://docs.asterisk.org/Configuration/Applications/Dial-Application/
+```
+4. Application Reference: https://docs.asterisk.org/Asterisk_22_Documentation/API_Documentation/Dialplan_Applications/
+
+5. Function Reference: https://docs.asterisk.org/Asterisk_22_Documentation/API_Documentation/Dialplan_Functions/
+
+7. Global Variables Reference: https://docs.asterisk.org/Configuration/Dialplan/Variables/
+
+
+## 2. cAdvisor
 ```bash
 tee ~/batch.sh<<EOF
 #!/bin/bash
@@ -25,15 +168,15 @@ docker run \
   cadvisor:latest
 EOF
 ```
-## 2. Couchbase
+## 3. Couchbase
 See:
 - [Multi-node, Single Host Cluster](https://docs.couchbase.com/server/current/install/getting-started-docker.html#multi-node-cluster-one-host)
 - [Server Certificates](https://docs.couchbase.com/server/current/manage/manage-security/manage-security-settings.html#root-certificate-security-screen-display)
 - [Configure Sever Certificates](https://docs.couchbase.com/server/current/manage/manage-security/configure-server-certificates.html)
 - [On-the-Wire Security](https://docs.couchbase.com/server/current/manage/manage-security/manage-tls.html)
 - tls-cluster-7.1.1.yml
-## 3. Docker
-### 3.1. Standard
+## 4. Docker
+### 4.1. Standard
 ```bash
 # install docker
 tee ~/batch.sh<<EOF
@@ -71,7 +214,7 @@ sudo systemctl enable docker
 EOF
 ~/batch.sh
 ```
-### 3.2. Rootless
+### 4.2. Rootless
 - See [Rootless Docker](https://docs.docker.com/engine/security/rootless/)
 
 First, deploy standard.
@@ -89,7 +232,7 @@ dockerd-rootless-setuptool.sh install
 systemctl --user enable docker
 sudo loginctl enable-linger $(whoami)
 ```
-### 3.3. WSL 
+### 4.3. WSL 
 Start Docker
 ```
 /mnt/c/Windows/System32/wsl.exe -d Ubuntu sh -c "nohup sudo -b dockerd >/home/ubuntu/dockerd.log 2>&1 </dev/null"
@@ -105,7 +248,7 @@ Stop Docker
 sudo kill -SIGTERM $(pidof dockerd)
 ```
 
-## 4. Envoy
+## 5. Envoy
 ```bash
 tee ~/batch.sh<<EOF
 #!/bin/bash
@@ -164,7 +307,7 @@ docker  run \
 EOF
 ~/batch.sh
 ```
-## 5. Fluentd
+## 6. Fluentd
 See
 - [Docker Hub](https://hub.docker.com/r/fluent/fluentd/)
 - [Fluentd Configuration](https://docs.fluentd.org/configuration/config-file)
@@ -238,7 +381,7 @@ EOF
 ~/batch.sh
 ```
 
-## 6. Git
+## 7. Git
 ```bash
 cd C:\Users\sidharth.sankar\Downloads
 git clone https://host/repo/repo.git trunk
@@ -295,7 +438,7 @@ git push --force
 git checkout trunk
 git merge feature
 ```
-## 7. Grafana
+## 8. Grafana
 See, (Nginx Reverse Proxy)[https://grafana.com/tutorials/run-grafana-behind-a-proxy/]
 ```bash
 tee ~/batch.sh<<EOF
@@ -341,7 +484,20 @@ GF_PATHS_LOGS=/var/log/grafana
 GF_PATHS_PLUGINS=/var/lib/grafana/plugins
 GF_PATHS_PROVISIONING=/etc/grafana/provisioning
 ```
-## 8. Loki
+
+## 9. IpTables
+* [Order of Tables and Chains](https://share.google/aimode/m9gzz0SbG43lriozO)
+
+1. Chain (packet traversal) order: PREROUTING, INPUT, FORWARD, OUTPUT, POSTROUTING
+2. Table order: Raw, Mangle, NAT, Filter (default; i.e. when the -t option is not provided), Security
+3. Table-Chain order: 
+    * PREROUTING: Raw, Mangle, NAT (DNAT)
+    * INPUT: Mangle, Filter, Security, NAT
+    * FORWARD: Mangle, Filter, Security
+    * OUTPUT: Raw, Mangle, NAT, Filter, Security
+    * POSTROUTING: Mangle, NAT (SNAT)
+
+## 10. Loki
 See
 - [Loki Configuration](https://grafana.com/docs/loki/latest/configuration/)
 ```bash
@@ -408,7 +564,7 @@ curl  -v \
       --data-raw '{"streams": [{ "stream": { "logger": "shell" }, "values": [ [ "1662950083000000000", "This is a test" ] ] }]}'
 ```
 
-## 9. Minio
+## 11. Minio
 - [Installing Minio](https://linuxhint.com/installing_minio_ubuntu/)
 - [Minio Server](https://min.io/docs/minio/linux/reference/minio-server/minio-server.html#)
 - [Minio Client](https://min.io/docs/minio/linux/reference/minio-mc.html)
@@ -439,7 +595,7 @@ md5sum /tmp/message.txt /tmp/message.bak.txt | md5sum --check
 /app/download.sh
 ```
 
-## 10. Nginx
+## 12. Nginx
 ```bash
 cat <<EOT >> greetings.txt
 line 1
@@ -526,7 +682,7 @@ docker  run \\
         nginx:latest
 EOF
 ```
-## 11. OpenSSL
+## 13. OpenSSL
 ```bash
 cd /app/config
 
@@ -564,7 +720,7 @@ openssl x509 -subject -issuer -startdate -enddate -noout -in /app/config/acme.pe
 openssl rsa -modulus -noout -in /app/config/acme.key | openssl md5
 openssl x509 -modulus -noout -in /app/config/acme.pem | openssl md5 # match private key with cert; md5 sums must match
 ```
-## 13. Portainer
+## 14. Portainer
 See
 - [Portainer Deployment](https://docs.portainer.io/v/ce-2.9/start/install/server/docker/linux)
 
@@ -587,7 +743,7 @@ EOF
 chmod +x ~/docker/portainer/run.sh
 # password: A8(k*2S*muxM
 ```
-## 12. Prometheus
+## 15. Prometheus
 - [Loki Configuration](https://grafana.com/docs/loki/latest/configuration/)
 ```bash
 tee ~/batch.sh<<EOF
@@ -602,7 +758,7 @@ docker tag prom/prometheus:v2.38.0 prometheus:latest
 docker run --it --name prometheus --network=host --rm prometheus:latest
 ```
 Open `localhost:9090`.
-## 14. RabbitMQ
+## 16. RabbitMQ
 ```bash
 # Create rabbit-mq network
 docker network create \
@@ -643,7 +799,7 @@ docker run \
   -v ~/frm-cloud/docker/rabbitmq/config/host.key:/etc/rabbitmq/rabbitmq.key:ro \
   rabbitmq:cluster
 ```
-## 15. Redis
+## 17. Redis
 ```bash
 tee ~/batch.sh<<EOF
 #!/bin/bash
@@ -669,7 +825,7 @@ docker  run \
         redis:latest redis-cli -h 127.0.0.1
 ```
 
-## 16. SonarQube
+## 18. SonarQube
 See
 - [SonarQube Documentation](https://docs.sonarqube.org/latest/)
 - [Disable Rules](https://sqa.stackexchange.com/questions/24734/how-to-deactivate-a-rule-in-sonarqube)
@@ -723,7 +879,7 @@ C:\Users\sidharth.sankar\AppData\Local\gradle-5.4.1\bin\gradle.bat sonarqube `
   -Dsonar.login=squ_5ee74580b7c2631c7e0363a851bfccf839b546a8 `
   -Dsonar.login=sqp_3d262afd0b532120248e38f0de020c52b182db42
 ```
-## 17. Ubuntu
+## 19. Ubuntu
 ```bash
 tee ~/batch.sh<<EOF
 #!/bin/bash
@@ -761,9 +917,20 @@ docker  run \
         --rm \
         -v ~:/home/ubuntu ubuntu echo 'Hello World!' $(date)
 ```
+### 19.1. Swap Space
+```bash
+sudo swapon --show # shows current active swap partitions
+sudo fallocate -l 2G /swapfile # creates 2G swap in file /swapfile
+sudo chmod 600 /swapfile # restrict access to /swapfile
+sudo mkswap /swapfile # initializes swap space
+sudo swapon /swapfile # activates swap space
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab # mounts /swapfile on reboot
+sudo mount -a # verifies integrity of /etc/fstab
+sudo findmnt --verify --verbose # a more comprehensive verification of /etc/fstab
+```
 
-## 18. UFW
-### 18.1. Installation
+## 20. UFW
+### 20.1. Installation
 ```
 ufw status
 sudo apt install -y ufw
@@ -771,7 +938,7 @@ sudo systemctl start ufw
 sudo systemctl enable ufw
 sudo systemctl status ufw
 ```
-### 18.2. SSH
+### 20.2. SSH
 ```
 ufw status # expect Status: inactive
 sudo ufw allow OpenSSH 
@@ -784,23 +951,23 @@ sudo ufw show added
 sudo ufw enable
 ufw status
 ```
-### 18.3. Web
+### 20.3. Web
 ```
 sudo ufw allow http 
 sudo ufw allow https
 sudo ufw show added
 ufw status
 ```
-### 18.4 Port Forwarding
+### 20.4 Port Forwarding
 Refer: [UFW Port Forwarding](https://www.baeldung.com/linux/ufw-port-forward)
 
-#### 18.4.1. Update `sysctl.conf`
+#### 20.4.1. Update `sysctl.conf`
 ```
 cat /etc/ufw/sysctl.conf
 echo 'net/ipv4/ip_forward=1' >> /etc/ufw/sysctl.conf
 ```
 
-#### 18.4.2. Update `before.rules`
+#### 20.4.2. Update `before.rules`
 sudo vi /etc/ufw/before.rules
 ```
 *filter
@@ -816,14 +983,14 @@ COMMIT
 COMMIT
 ```
 
-#### 18.4.3. Update ufw rules
+#### 20.4.3. Update ufw rules
 ```
 sudo ufw allow 8080/tcp
 sudo ufw allow 8443/tcp
 sudo systemctl restart ufw
 ```
 
-#### 18.4.4. Reboot server
+#### 20.4.4. Reboot server
 Sometimes it takes a reboot for things to work.
 
 ## Note(s)
