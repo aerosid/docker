@@ -248,6 +248,44 @@ Stop Docker
 sudo kill -SIGTERM $(pidof dockerd)
 ```
 
+### 4.4. Ubuntu 26.04
+
+The apt-key tool has been completely removed in Ubuntu 26.04.  Modern Ubuntu versions require third-party GPG keys to be saved securely in individual files within /etc/apt/keyrings/
+
+#### 4.4.1. Download GPG key
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
+
+#### 4.4.2. Add the Docker Repository
+Run this block to add the repository configuration to your package manager sources:
+
+```bash
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+cat /etc/apt/sources.list.d/docker.list
+```
+
+#### 4.4.3. Install Docker
+Update your package index and install Docker:
+
+```bash
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+#### 4.4.4. Verify Installation
+Verify the installation by running the hello-world image:
+
+```bash
+sudo docker run hello-world
+```
+
+
 ## 5. Envoy
 ```bash
 tee ~/batch.sh<<EOF
@@ -993,6 +1031,12 @@ sudo systemctl restart ufw
 #### 20.4.4. Reboot server
 Sometimes it takes a reboot for things to work.
 
+### 20.5 Testing Port Connectivity
+```bash
+sudo nc -l 8080 # run this on the EC2 instance
+nc -zv 13.200.8.37 80 # run this from laptop.  
+# You should see: Connection to 13.200.8.37 443 port [tcp/https] succeeded!
+```
 ## Note(s)
 ```bash
 
