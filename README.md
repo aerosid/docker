@@ -35,7 +35,7 @@ make samples #/etc/asterisk/*.conf
 make config #/etc/init.d/asterisk
 make install-logrotate
 make basic-pbx
-make progdocs
+make progdocs # Generates C-API documentation; this creates 1.3 GB of docs
 ```
 Sample `pjsip.conf`:
 ```ini
@@ -254,28 +254,51 @@ The apt-key tool has been completely removed in Ubuntu 26.04.  Modern Ubuntu ver
 
 #### 4.4.1. Download GPG key
 ```bash
-sudo install -m 0755 -d /etc/apt/keyrings
+# Quotes around EOF prevent the main shell from touching anything inside the block.
+tee ~/batch.sh<<"EOF"
+#!/bin/bash
+set -e
+set -x
+
+sudo apt-get install -y ca-certificates curl
+sudo install -m 0.755 -d /etc/apt/keyrings
 sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc
+sudo cat /etc/apt/keyrings/docker.asc
+EOF
+
+source ~/batch.sh
 ```
 
 #### 4.4.2. Add the Docker Repository
-Run this block to add the repository configuration to your package manager sources:
-
 ```bash
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-cat /etc/apt/sources.list.d/docker.list
+tee ~/batch.sh <<"EOF"
+#!/bin/bash
+set -e
+set -x
+
+ARCH=$(dpkg --print-architecture)
+VERSION=$(source /etc/os-release && echo "$VERSION_CODENAME")
+LIST="deb [arch=${ARCH} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION} stable"
+echo "${LIST}" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo cat /etc/apt/sources.list.d/docker.list
+EOF
+
+source ~/batch.sh
 ```
 
 #### 4.4.3. Install Docker
-Update your package index and install Docker:
-
 ```bash
+tee ~/batch.sh<<"EOF"
+#!/bin/bash
+set -e
+set -x
 sudo apt update
-sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt install -y docker-ce docker-ce-cli containerd.io
+sudo usermod -a -G docker $(whoami)
+EOF
+
+source ~/batch.sh
 ```
 
 #### 4.4.4. Verify Installation
@@ -967,6 +990,59 @@ sudo mount -a # verifies integrity of /etc/fstab
 sudo findmnt --verify --verbose # a more comprehensive verification of /etc/fstab
 ```
 
+### 19.2. WireGuard
+#### 19.2.1. Installation
+```bash
+sudo apt install -y wireguard
+sudo vi /etc/ufw/sysctl.conf # uncomment this line net.ipv4.ip_forward=1
+```
+#### 19.2.2. Key Generation
+```bash
+wg genkey | sudo tee /etc/wireguard/privatekey
+sudo chmod 600 /etc/wireguard/privatekey
+sudo cat /etc/wireguard/privatekey | wg pubkey | sudo tee /etc/wireguard/publickey
+```
+#### 19.2.3. Sample Config files
+Thinux:
+```conf
+[Interface]
+Address = 10.0.0.2/24
+PrivateKey = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=
+
+[Peer]
+AllowedIPs = 10.0.0.1/32
+Endpoint = 13.200.233.29:51820
+PersistentKeepalive = 25
+PublicKey = fDP/7PxAjnU3nUJcVst0xxuHZQOJPErsGziWW3l4Q0Q=
+```
+AWS:
+```conf
+[Interface]
+Address = 10.0.0.1/24
+MTU = 1420
+SaveConfig = true
+ListenPort = 51820
+PrivateKey = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=
+
+[Peer]
+PublicKey = 2Kh2BqoBknqcRoznd6i3lvOgHSDNnDHhShkSNgxGP3M=
+AllowedIPs = 10.0.0.2/32
+```
+#### 19.2.3. Useful Commands.
+```bash
+sudo systemctl enable wg-quick@wg0 # automated startup after system reboot
+sudo wg-quick up wg0 # sudo wg-quick down wg0
+sudo wg show
+ifconfig wg0 # get virtual adapter information
+```
+
+### 19.3 .bashrc Customization
+Add this to file `~/.bashrc` to customize your shell prompt:
+```conf
+PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@pilot:\[\033[01;34m\]\w\[\033[00m\]\$ '
+```
+Then run `source ~/.bashrc` for changes to take effect.
+
 ## 20. UFW
 ### 20.1. Installation
 ```
@@ -996,16 +1072,23 @@ sudo ufw allow https
 sudo ufw show added
 ufw status
 ```
-### 20.4 Port Forwarding
+
+### 20.4. Asterisk
+```bash
+sudo ufw allow 5060/udp # SIP traffic
+sudo ufw allow 10000:20000/udp # RTP traffic
+```
+
+### 20.5 Port Forwarding
 Refer: [UFW Port Forwarding](https://www.baeldung.com/linux/ufw-port-forward)
 
-#### 20.4.1. Update `sysctl.conf`
+#### 20.5.1. Update `sysctl.conf`
 ```
 cat /etc/ufw/sysctl.conf
 echo 'net/ipv4/ip_forward=1' >> /etc/ufw/sysctl.conf
 ```
 
-#### 20.4.2. Update `before.rules`
+#### 20.5.2. Update `before.rules`
 sudo vi /etc/ufw/before.rules
 ```
 *filter
