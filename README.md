@@ -261,7 +261,7 @@ set -e
 set -x
 
 sudo apt-get install -y ca-certificates curl
-sudo install -m 0.755 -d /etc/apt/keyrings
+sudo install -m 755 -d /etc/apt/keyrings
 sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc
 sudo cat /etc/apt/keyrings/docker.asc
