@@ -193,7 +193,7 @@ EOF
 ~/batch.sh
 
 # configure docker
-tee ~/batch.sh<<EOF
+tee ~/batch.sh<<"EOF"
 #!/bin/bash
 set -e
 set -x
@@ -300,8 +300,31 @@ EOF
 
 source ~/batch.sh
 ```
+#### 4.4.4. Configure Docker
+```bash
+tee ~/batch.sh<<"EOF"
+#!/bin/bash
+set -e
+set -x
+sudo tee /etc/docker/daemon.json <<EOFF
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "local",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "storage-driver": "overlay2"
+}
+EOFF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+sudo systemctl enable docker
+EOF
 
-#### 4.4.4. Verify Installation
+source ~/batch.sh
+```
+#### 4.4.5. Verify Installation
 Verify the installation by running the hello-world image:
 
 ```bash
